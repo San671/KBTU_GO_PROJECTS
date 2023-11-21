@@ -1,0 +1,2 @@
+ALTER TABLE gifts ADD CONSTRAINT gifts_superiority_check CHECK (superiority IN ('silver', 'gold', 'diamond'));
+ALTER TABLE gifts ADD CONSTRAINT gifts_status_check CHECK (status IN ('not-ready', 'in-process', 'ready'));
