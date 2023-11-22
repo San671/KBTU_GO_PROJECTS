@@ -11,10 +11,15 @@ var (
 	ErrRecordNotFound = errors.New("record not found")
 )
 
-// Create a Models struct which wraps the MovieModel. We'll add other models to this,
-// like a UserModel and PermissionModel, as our build progresses.
 type Models struct {
-	Gifts GiftModel
+	// Set the Movies field to be an interface containing the methods that both the
+	// 'real' model and mock model need to support.
+	Gifts interface {
+		Insert(gift *Gift) error
+		Get(id int64) (*Gift, error)
+		Update(gift *Gift) error
+		Delete(id int64) error
+	}
 }
 
 // For ease of use, we also add a New() method which returns a Models struct containing
