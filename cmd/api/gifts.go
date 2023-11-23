@@ -1,12 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"personalized_gifts.sanzhar.net/internal/validator"
-	"time"
-
 	"personalized_gifts.sanzhar.net/internal/data"
+	"personalized_gifts.sanzhar.net/internal/validator"
 )
 
 func (app *application) createGiftHandler(w http.ResponseWriter, r *http.Request) {
@@ -65,24 +64,83 @@ func (app *application) createGiftHandler(w http.ResponseWriter, r *http.Request
 func (app *application) showGiftHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
-		// Use the new notFoundResponse() helper.
 		app.notFoundResponse(w, r)
 		return
 	}
-
-	gift := data.Gift{
-		ID:          id,
-		CreatedAt:   time.Now(),
-		Title:       "Ring ",
-		Description: "This ring will make a wonderful gift",
-		Superiority: "gold",
-		Status:      "ready",
-		Category:    "decoration",
+	// Call the Get() method to fetch the data for a specific movie. We also need to
+	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
+	// error, in which case we send a 404 Not Found response to the client.
+	gift, err := app.models.Gifts.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
 	}
-
 	err = app.writeJSON(w, http.StatusOK, envelope{"gift": gift}, nil)
 	if err != nil {
-		// Use the new serverErrorResponse() helper.
+		app.serverErrorResponse(w, r, err)
+	}
+}
+func (app *application) updateGiftHandler(w http.ResponseWriter, r *http.Request) {
+	// Extract the movie ID from the URL.
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	// Fetch the existing movie record from the database, sending a 404 Not Found
+	// response to the client if we couldn't find a matching record.
+	gift, err := app.models.Gifts.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	// Declare an input struct to hold the expected data from the client.
+	var input struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Superiority string `json:"superiority"`
+		Status      string `json:"status"`
+		Category    string `json:"category"`
+	}
+	// Read the JSON request body data into the input struct.
+	err = app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+	// Copy the values from the request body to the appropriate fields of the movie
+	// record.
+	gift.Title = input.Title
+	gift.Description = input.Description
+	gift.Superiority = input.Superiority
+	gift.Status = input.Status
+	gift.Category = input.Category
+	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
+	// response if any checks fail.
+	v := validator.New()
+	if data.ValidateGift(v, gift); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Pass the updated movie record to our new Update() method.
+	err = app.models.Gifts.Update(gift)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Write the updated movie record in a JSON response.
+	err = app.writeJSON(w, http.StatusOK, envelope{"gifts": gift}, nil)
+	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

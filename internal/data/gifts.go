@@ -2,6 +2,8 @@ package data
 
 import (
 	"database/sql"
+	"errors"
+	_ "github.com/lib/pq"
 	"personalized_gifts.sanzhar.net/internal/validator"
 	"time"
 )
@@ -55,14 +57,70 @@ func (m GiftModel) Insert(gift *Gift) error {
 	return m.DB.QueryRow(query, args...).Scan(&gift.ID, &gift.CreatedAt, &gift.Version)
 }
 
-// Add a placeholder method for fetching a specific record from the movies table.
 func (m GiftModel) Get(id int64) (*Gift, error) {
-	return nil, nil
+	// The PostgreSQL bigserial type that we're using for the movie ID starts
+	// auto-incrementing at 1 by default, so we know that no movies will have ID values
+	// less than that. To avoid making an unnecessary database call, we take a shortcut
+	// and return an ErrRecordNotFound error straight away.
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+	// Define the SQL query for retrieving the movie data.
+	query := `
+SELECT id, created_at, title, description, superiority, status, category, version
+FROM gifts
+WHERE id = $1`
+	// Declare a Movie struct to hold the data returned by the query.
+	var gift Gift
+	// Execute the query using the QueryRow() method, passing in the provided id value
+	// as a placeholder parameter, and scan the response data into the fields of the
+	// Movie struct. Importantly, notice that we need to convert the scan target for the
+	// genres column using the pq.Array() adapter function again.
+	err := m.DB.QueryRow(query, id).Scan(
+		&gift.ID,
+		&gift.CreatedAt,
+		&gift.Title,
+		&gift.Description,
+		&gift.Superiority,
+		&gift.Status,
+		&gift.Category,
+		&gift.Version,
+	)
+	// Handle any errors. If there was no matching movie found, Scan() will return
+	// a sql.ErrNoRows error. We check for this and return our custom ErrRecordNotFound
+	// error instead.
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	// Otherwise, return a pointer to the Movie struct.
+	return &gift, nil
 }
 
-// Add a placeholder method for updating a specific record in the movies table.
 func (m GiftModel) Update(gift *Gift) error {
-	return nil
+	// Declare the SQL query for updating the record and returning the new version
+	// number.
+	query := `
+UPDATE gifts
+SET title = $1, description = $2, superiority = $3, status = $4, category =$5, version = version + 1
+WHERE id = $6
+RETURNING version`
+	// Create an args slice containing the values for the placeholder parameters.
+	args := []interface{}{
+		gift.Title,
+		gift.Description,
+		gift.Superiority,
+		gift.Status,
+		gift.Category,
+		gift.ID,
+	}
+	// Use the QueryRow() method to execute the query, passing in the args slice as a
+	// variadic parameter and scanning the new version value into the movie struct.
+	return m.DB.QueryRow(query, args...).Scan(&gift.Version)
 }
 
 // Add a placeholder method for deleting a specific record from the movies table.
