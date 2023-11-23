@@ -18,10 +18,8 @@ func (app *application) routes() *httprouter.Router {
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/gifts", app.createGiftHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/gifts/:id", app.showGiftHandler)
-	// Add the route for the PUT /v1/gifts/:id endpoint.
-	router.HandlerFunc(http.MethodPut, "/v1/gifts/:id", app.updateGiftHandler)
-	// Add the route for the DELETE /v1/gifts/:id endpoint.
-	router.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.deleteGiftHandler)
-
+	// Require a PATCH request, rather than PUT.
+	router.HandlerFunc(http.MethodPatch, "/v1/gifts/:id", app.updateGiftHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/gifts/:id", app.deleteGiftHandler)
 	return router
 }

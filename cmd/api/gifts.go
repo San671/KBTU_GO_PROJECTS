@@ -86,13 +86,14 @@ func (app *application) showGiftHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 func (app *application) updateGiftHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract the movie ID from the URL.
+	// Extract the gift ID from the URL.
 	id, err := app.readIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
 		return
 	}
-	// Fetch the existing movie record from the database, sending a 404 Not Found
+
+	// Fetch the existing gift record from the database, sending a 404 Not Found
 	// response to the client if we couldn't find a matching record.
 	gift, err := app.models.Gifts.Get(id)
 	if err != nil {
@@ -104,46 +105,61 @@ func (app *application) updateGiftHandler(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
+
 	// Declare an input struct to hold the expected data from the client.
 	var input struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		Superiority string `json:"superiority"`
-		Status      string `json:"status"`
-		Category    string `json:"category"`
+		Title       *string `json:"title"`
+		Description *string `json:"description"`
+		Superiority *string `json:"superiority"`
+		Status      *string `json:"status"`
+		Category    *string `json:"category"`
 	}
+
 	// Read the JSON request body data into the input struct.
 	err = app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
-	// Copy the values from the request body to the appropriate fields of the movie
-	// record.
-	gift.Title = input.Title
-	gift.Description = input.Description
-	gift.Superiority = input.Superiority
-	gift.Status = input.Status
-	gift.Category = input.Category
-	// Validate the updated movie record, sending the client a 422 Unprocessable Entity
-	// response if any checks fail.
+
+	// Update the gift record with the new values if they are provided in the input.
+	if input.Title != nil {
+		gift.Title = *input.Title
+	}
+	if input.Description != nil {
+		gift.Description = *input.Description
+	}
+	if input.Superiority != nil {
+		gift.Superiority = *input.Superiority
+	}
+	if input.Status != nil {
+		gift.Status = *input.Status
+	}
+	if input.Category != nil {
+		gift.Category = *input.Category
+	}
+
+	// Validate the updated gift.
 	v := validator.New()
 	if data.ValidateGift(v, gift); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	// Pass the updated movie record to our new Update() method.
+
+	// Update the gift record in the database.
 	err = app.models.Gifts.Update(gift)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	// Write the updated movie record in a JSON response.
-	err = app.writeJSON(w, http.StatusOK, envelope{"gifts": gift}, nil)
+
+	// Write the updated gift record in the response.
+	err = app.writeJSON(w, http.StatusOK, envelope{"gift": gift}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
 func (app *application) deleteGiftHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract the movie ID from the URL.
 	id, err := app.readIDParam(r)
