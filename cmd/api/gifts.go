@@ -195,7 +195,7 @@ func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request)
 	var input struct {
 		Title    string
 		Category []string
-		data.Filters
+		Filters  data.Filters // Assuming data.Filters is a struct type
 	}
 	// Initialize a new Validator instance.
 	v := validator.New()
@@ -209,17 +209,19 @@ func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request)
 	// Get the page and page_size query string values as integers. Notice that we set
 	// the default page value to 1 and default page_size to 20, and that we pass the
 	// validator instance as the final argument here.
-	input.Page = app.readInt(qs, "page", 1, v)
-	input.PageSize = app.readInt(qs, "page_size", 20, v)
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
 	// Extract the sort query string value, falling back to "id" if it is not provided
-	// by the client (which will imply a ascending sort on movie ID).
-	input.Sort = app.readString(qs, "sort", "id")
-	// Check the Validator instance for any errors and use the failedValidationResponse()
-	// helper to send the client a response if necessary.
-	if !v.Valid() {
+	// by the client (which will imply an ascending sort on movie ID).
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{"id", "title", "description", "superiority", "-id", "-title", "-description", "-superiority"}
+
+	// Execute the validation checks on the Filters struct and send a response
+	// containing the errors if necessary.
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	// Dump the contents of the input struct in a HTTP response.
+	// Dump the contents of the input struct in an HTTP response.
 	fmt.Fprintf(w, "%+v\n", input)
 }
