@@ -190,8 +190,6 @@ func (app *application) deleteGiftHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request) {
-	// To keep things consistent with our other handlers, we'll define an input struct
-	// to hold the expected values from the request query string.
 	var input struct {
 		Title    string
 		Category []string
@@ -216,12 +214,20 @@ func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request)
 	input.Filters.Sort = app.readString(qs, "sort", "id")
 	input.Filters.SortSafelist = []string{"id", "title", "description", "superiority", "-id", "-title", "-description", "-superiority"}
 
-	// Execute the validation checks on the Filters struct and send a response
-	// containing the errors if necessary.
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	// Dump the contents of the input struct in an HTTP response.
-	fmt.Fprintf(w, "%+v\n", input)
+	// Call the GetAll() method to retrieve the movies, passing in the various filter
+	// parameters.
+	gifts, err := app.models.Gifts.GetAll(input.Title, input.Category, input.Filters)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Send a JSON response containing the movie data.
+	err = app.writeJSON(w, http.StatusOK, envelope{"gifts": gifts}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
