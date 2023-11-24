@@ -105,10 +105,10 @@ func (m GiftModel) Update(gift *Gift) error {
 	// Declare the SQL query for updating the record and returning the new version
 	// number.
 	query := `
-UPDATE gifts
-SET title = $1, description = $2, superiority = $3, status = $4, category =$5, version = version + 1
-WHERE id = $6
-RETURNING version`
+        UPDATE gifts
+        SET title = $1, description = $2, superiority = $3, status = $4, category =$5, version = version + 1
+        WHERE id = $6 AND version = $7
+        RETURNING version`
 	// Create an args slice containing the values for the placeholder parameters.
 	args := []interface{}{
 		gift.Title,
@@ -117,10 +117,21 @@ RETURNING version`
 		gift.Status,
 		gift.Category,
 		gift.ID,
+		gift.Version,
 	}
-	// Use the QueryRow() method to execute the query, passing in the args slice as a
-	// variadic parameter and scanning the new version value into the movie struct.
-	return m.DB.QueryRow(query, args...).Scan(&gift.Version)
+	// Execute the SQL query. If no matching row could be found, we know the movie
+	// version has changed (or the record has been deleted) and we return our custom
+	// ErrEditConflict error.
+	err := m.DB.QueryRow(query, args...).Scan(&gift.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+	return nil
 }
 
 func (m GiftModel) Delete(id int64) error {

@@ -146,14 +146,18 @@ func (app *application) updateGiftHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Update the gift record in the database.
+	// Intercept any ErrEditConflict error and call the new editConflictResponse()
+	// helper.
 	err = app.models.Gifts.Update(gift)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
-
-	// Write the updated gift record in the response.
 	err = app.writeJSON(w, http.StatusOK, envelope{"gift": gift}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
