@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	_ "github.com/lib/pq"
@@ -51,32 +52,33 @@ func (m GiftModel) Insert(gift *Gift) error {
 	// Create an args slice containing the values for the placeholder parameters from
 	// the gift struct.
 	args := []interface{}{gift.Title, gift.Description, gift.Superiority, gift.Status, gift.Category}
-	// Use the QueryRow() method to execute the SQL query on our connection pool,
-	// passing in the args slice as a variadic parameter and scanning the system-
-	// generated id, created_at, and version values into the gift struct.
-	return m.DB.QueryRow(query, args...).Scan(&gift.ID, &gift.CreatedAt, &gift.Version)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	return m.DB.QueryRowContext(ctx, query, args...).Scan(&gift.ID, &gift.CreatedAt, &gift.Version)
 }
 
 func (m GiftModel) Get(id int64) (*Gift, error) {
-	// The PostgreSQL bigserial type that we're using for the movie ID starts
-	// auto-incrementing at 1 by default, so we know that no movies will have ID values
-	// less than that. To avoid making an unnecessary database call, we take a shortcut
-	// and return an ErrRecordNotFound error straight away.
+
 	if id < 1 {
 		return nil, ErrRecordNotFound
 	}
+
 	// Define the SQL query for retrieving the movie data.
 	query := `
-SELECT id, created_at, title, description, superiority, status, category, version
-FROM gifts
-WHERE id = $1`
+        SELECT pg_sleep(10), id, created_at, title, description, superiority, status, category, version
+        FROM gifts
+        WHERE id = $1`
 	// Declare a Movie struct to hold the data returned by the query.
 	var gift Gift
-	// Execute the query using the QueryRow() method, passing in the provided id value
-	// as a placeholder parameter, and scan the response data into the fields of the
-	// Movie struct. Importantly, notice that we need to convert the scan target for the
-	// genres column using the pq.Array() adapter function again.
-	err := m.DB.QueryRow(query, id).Scan(
+	// Use the context.WithTimeout() function to create a context.Context which carries a
+	// 3-second timeout deadline. Note that we're using the empty context.Background()
+	// as the 'parent' context.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(
+		&[]byte{}, // Add this line.
 		&gift.ID,
 		&gift.CreatedAt,
 		&gift.Title,
@@ -119,10 +121,11 @@ func (m GiftModel) Update(gift *Gift) error {
 		gift.ID,
 		gift.Version,
 	}
-	// Execute the SQL query. If no matching row could be found, we know the movie
-	// version has changed (or the record has been deleted) and we return our custom
-	// ErrEditConflict error.
-	err := m.DB.QueryRow(query, args...).Scan(&gift.Version)
+	// Create a context with a 3-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&gift.Version)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -143,10 +146,11 @@ func (m GiftModel) Delete(id int64) error {
 	query := `
         DELETE FROM gifts
         WHERE id = $1`
-	// Execute the SQL query using the Exec() method, passing in the id variable as
-	// the value for the placeholder parameter. The Exec() method returns a sql.Result
-	// object.
-	result, err := m.DB.Exec(query, id)
+	// Create a context with a 3-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := m.DB.ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}
