@@ -174,8 +174,7 @@ func (m GiftModel) GetAll(title string, status []string, filters Filters) ([]*Gi
 	SELECT id, created_at, title, description, superiority, status, category, version
 	FROM gifts
 	WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
-    AND (status =$2 OR $2 = '{}')
-
+    AND (status = $2 OR $2 = '{}')
     ORDER BY id`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
