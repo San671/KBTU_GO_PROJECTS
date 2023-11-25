@@ -170,9 +170,9 @@ func (m GiftModel) Delete(id int64) error {
 	return nil
 }
 
-func (m GiftModel) GetAll(title string, status []string, filters Filters) ([]*Gift, error) {
+func (m GiftModel) GetAll(title string, status []string, filters Filters) ([]*Gift, Metadata, error) {
 	query := fmt.Sprintf(`
-	SELECT id, created_at, title, description, superiority, status, category, version
+	SELECT count(*) OVER(), id, created_at, title, description, superiority, status, category, version
 	FROM gifts
 	WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
     AND (status = $2 OR $2 = '{}')
@@ -185,16 +185,19 @@ func (m GiftModel) GetAll(title string, status []string, filters Filters) ([]*Gi
 	args := []interface{}{title, pq.Array(status), filters.limit(), filters.offset()}
 
 	rows, err := m.DB.QueryContext(ctx, query, args...)
-
 	if err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
-	defer rows.Close()
 
+	defer rows.Close()
+	totalRecords := 0
 	gifts := []*Gift{}
+
 	for rows.Next() {
 		var gift Gift
+
 		err := rows.Scan(
+			&totalRecords, // Извлекаем общее количество записей
 			&gift.ID,
 			&gift.CreatedAt,
 			&gift.Title,
@@ -205,14 +208,17 @@ func (m GiftModel) GetAll(title string, status []string, filters Filters) ([]*Gi
 			&gift.Version,
 		)
 		if err != nil {
-			return nil, err
+			return nil, Metadata{}, err
 		}
 		gifts = append(gifts, &gift)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
-
-	return gifts, nil
+	// Generate a Metadata struct, passing in the total record count and pagination
+	// parameters from the client.
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	// Include the metadata struct when returning.
+	return gifts, metadata, nil
 }

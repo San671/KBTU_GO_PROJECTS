@@ -20,7 +20,7 @@ type Models struct {
 		Get(id int64) (*Gift, error)
 		Update(gift *Gift) error
 		Delete(id int64) error
-		GetAll(title string, category []string, filters Filters) ([]*Gift, error)
+		GetAll(title string, category []string, filters Filters) ([]*Gift, Metadata, error)
 	}
 }
 

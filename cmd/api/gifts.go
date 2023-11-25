@@ -221,13 +221,13 @@ func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request)
 
 	// Call the GetAll() method to retrieve the movies, passing in the various filter
 	// parameters.
-	gifts, err := app.models.Gifts.GetAll(input.Title, input.Status, input.Filters)
+	gifts, metadata, err := app.models.Gifts.GetAll(input.Title, input.Status, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	// Send a JSON response containing the movie data.
-	err = app.writeJSON(w, http.StatusOK, envelope{"gifts": gifts}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"gifts": gifts, "metadata": metadata}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
