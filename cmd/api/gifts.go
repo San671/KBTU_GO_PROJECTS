@@ -191,9 +191,9 @@ func (app *application) deleteGiftHandler(w http.ResponseWriter, r *http.Request
 }
 func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title    string
-		Category []string
-		Filters  data.Filters // Assuming data.Filters is a struct type
+		Title        string
+		Status       []string
+		data.Filters // Assuming data.Filters is a struct type
 	}
 	// Initialize a new Validator instance.
 	v := validator.New()
@@ -203,7 +203,7 @@ func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request)
 	// to defaults of an empty string and an empty slice respectively if they are not
 	// provided by the client.
 	input.Title = app.readString(qs, "title", "")
-	input.Category = app.readCSV(qs, "category", []string{})
+	input.Status = app.readCSV(qs, "status", []string{})
 	// Get the page and page_size query string values as integers. Notice that we set
 	// the default page value to 1 and default page_size to 20, and that we pass the
 	// validator instance as the final argument here.
@@ -212,15 +212,16 @@ func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request)
 	// Extract the sort query string value, falling back to "id" if it is not provided
 	// by the client (which will imply an ascending sort on movie ID).
 	input.Filters.Sort = app.readString(qs, "sort", "id")
-	input.Filters.SortSafelist = []string{"id", "title", "description", "superiority", "-id", "-title", "-description", "-superiority"}
+	input.Filters.SortSafelist = []string{"id", "title", "description", "superiority", "status", "-id", "-title", "-description", "-superiority", "-status"}
 
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
+
 	// Call the GetAll() method to retrieve the movies, passing in the various filter
 	// parameters.
-	gifts, err := app.models.Gifts.GetAll(input.Title, input.Category, input.Filters)
+	gifts, err := app.models.Gifts.GetAll(input.Title, input.Status, input.Filters)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
