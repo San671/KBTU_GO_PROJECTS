@@ -6,10 +6,10 @@ import (
 	"flag"
 	"fmt"
 	_ "github.com/lib/pq"
-	"log"
 	"net/http"
 	"os"
 	"personalized_gifts.sanzhar.net/internal/data"
+	"personalized_gifts.sanzhar.net/internal/jsonlog"
 	"time"
 )
 
@@ -31,7 +31,7 @@ type config struct {
 // Add a models field to hold our new Models struct.
 type application struct {
 	config config
-	logger *log.Logger
+	logger *jsonlog.Logger
 	models data.Models
 }
 
@@ -44,15 +44,19 @@ func main() {
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
 	flag.Parse()
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	// Initialize a new jsonlog.Logger which writes any messages *at or above* the INFO
+	// severity level to the standard out stream.
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 	db, err := openDB(cfg)
 	if err != nil {
-		logger.Fatal(err)
+		// Use the PrintFatal() method to write a log entry containing the error at the
+		// FATAL level and exit. We have no additional properties to include in the log
+		// entry, so we pass nil as the second parameter.
+		logger.PrintFatal(err, nil)
 	}
 	defer db.Close()
-	logger.Printf("database connection pool established")
-	// Use the data.NewModels() function to initialize a Models struct, passing in the
-	// connection pool as a parameter.
+	// Likewise use the PrintInfo() method to write a message at the INFO level.
+	logger.PrintInfo("database connection pool established", nil)
 	app := &application{
 		config: cfg,
 		logger: logger,
@@ -65,9 +69,16 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
-	logger.Printf("starting %s server on %s", cfg.env, srv.Addr)
+	// Again, we use the PrintInfo() method to write a "starting server" message at the
+	// INFO level. But this time we pass a map containing additional properties (the
+	// operating environment and server address) as the final parameter.
+	logger.PrintInfo("starting server", map[string]string{
+		"addr": srv.Addr,
+		"env":  cfg.env,
+	})
 	err = srv.ListenAndServe()
-	logger.Fatal(err)
+	// Use the PrintFatal() method to log the error and exit.
+	logger.PrintFatal(err, nil)
 }
 
 func openDB(cfg config) (*sql.DB, error) {
