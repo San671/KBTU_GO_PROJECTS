@@ -16,6 +16,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/gifts/:id", app.showGiftHandler)
 	router.HandlerFunc(http.MethodPatch, "/v1/gifts/:id", app.updateGiftHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/gifts/:id", app.deleteGiftHandler)
-	// Wrap the router with the panic recovery middleware.
-	return app.recoverPanic(router)
+	// Wrap the router with the rateLimit() middleware.
+	return app.recoverPanic(app.rateLimit(router))
+
 }
