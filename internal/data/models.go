@@ -13,21 +13,13 @@ var (
 )
 
 type Models struct {
-	// Set the Movies field to be an interface containing the methods that both the
-	// 'real' model and mock model need to support.
-	Gifts interface {
-		Insert(gift *Gift) error
-		Get(id int64) (*Gift, error)
-		Update(gift *Gift) error
-		Delete(id int64) error
-		GetAll(title string, category []string, filters Filters) ([]*Gift, Metadata, error)
-	}
+	Gifts GiftModel
+	Users UserModel // Add a new Users field.
 }
 
-// For ease of use, we also add a New() method which returns a Models struct containing
-// the initialized MovieModel.
 func NewModels(db *sql.DB) Models {
 	return Models{
 		Gifts: GiftModel{DB: db},
+		Users: UserModel{DB: db}, // Initialize a new UserModel instance.
 	}
 }
