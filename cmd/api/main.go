@@ -9,13 +9,13 @@ import (
 	"personalized_gifts.sanzhar.net/internal/data"
 	"personalized_gifts.sanzhar.net/internal/jsonlog"
 	"personalized_gifts.sanzhar.net/internal/mailer"
+	"strings"
 	"sync"
 	"time"
 )
 
 const version = "1.0.0"
 
-// Update the config struct to hold the SMTP server settings.
 type config struct {
 	port int
 	env  string
@@ -37,11 +37,11 @@ type config struct {
 		password string
 		sender   string
 	}
+	cors struct {
+		trustedOrigins []string
+	}
 }
 
-// Include a sync.WaitGroup in the application struct. The zero-value for a
-// sync.WaitGroup type is a valid, useable, sync.WaitGroup with a 'counter' value of 0,
-// so we don't need to do anything else to initialize it before we can use it.
 type application struct {
 	config config
 	logger *jsonlog.Logger
@@ -61,15 +61,15 @@ func main() {
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
-	// Read the SMTP server configuration settings into the config struct, using the
-	// Mailtrap settings as the default values. IMPORTANT: If you're following along,
-	// make sure to replace the default values for smtp-username and smtp-password
-	// with your own Mailtrap credentials.
 	flag.StringVar(&cfg.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP host")
 	flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP port")
 	flag.StringVar(&cfg.smtp.username, "smtp-username", "bf67555f4d3789", "SMTP username")
 	flag.StringVar(&cfg.smtp.password, "smtp-password", "ab15f7ed0e215a", "SMTP password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "PersonalizedGifts <no-reply@personalizedgifts.sanzhar.net>", "SMTP sender")
+	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(val string) error {
+		cfg.cors.trustedOrigins = strings.Fields(val)
+		return nil
+	})
 	flag.Parse()
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 	db, err := openDB(cfg)
@@ -78,8 +78,6 @@ func main() {
 	}
 	defer db.Close()
 	logger.PrintInfo("database connection pool established", nil)
-	// Initialize a new Mailer instance using the settings from the command line
-	// flags, and add it to the application struct.
 	app := &application{
 		config: cfg,
 		logger: logger,
@@ -97,19 +95,12 @@ func openDB(cfg config) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Set the maximum number of open (in-use + idle) connections in the pool. Note that
-	// passing a value less than or equal to 0 will mean there is no limit.
 	db.SetMaxOpenConns(cfg.db.maxOpenConns)
-	// Set the maximum number of idle connections in the pool. Again, passing a value
-	// less than or equal to 0 will mean there is no limit.
 	db.SetMaxIdleConns(cfg.db.maxIdleConns)
-	// Use the time.ParseDuration() function to convert the idle timeout duration string
-	// to a time.Duration type.
 	duration, err := time.ParseDuration(cfg.db.maxIdleTime)
 	if err != nil {
 		return nil, err
 	}
-	// Set the maximum idle timeout.
 	db.SetConnMaxIdleTime(duration)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
