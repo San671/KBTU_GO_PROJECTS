@@ -67,7 +67,7 @@ func (m GiftModel) Get(id int64) (*Gift, error) {
 
 	// Define the SQL query for retrieving the movie data.
 	query := `
-        SELECT pg_sleep(10), id, created_at, title, description, superiority, status, category, version
+        SELECT  id, created_at, title, description, superiority, status, category, version
         FROM gifts
         WHERE id = $1`
 	// Declare a Movie struct to hold the data returned by the query.
@@ -79,7 +79,6 @@ func (m GiftModel) Get(id int64) (*Gift, error) {
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, id).Scan(
-		&[]byte{}, // Add this line.
 		&gift.ID,
 		&gift.CreatedAt,
 		&gift.Title,

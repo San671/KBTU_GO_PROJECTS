@@ -67,9 +67,9 @@ func (app *application) showGiftHandler(w http.ResponseWriter, r *http.Request) 
 		app.notFoundResponse(w, r)
 		return
 	}
-	// Call the Get() method to fetch the data for a specific movie. We also need to
-	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
-	// error, in which case we send a 404 Not Found response to the client.
+	// Call the Get() method to fetch the data for a specific task.
+	// We also need to use the errors.Is() function to check if it returns a data.ErrRecordNotFound error,
+	// in which case we send a 404 Not Found response to the client.
 	gift, err := app.models.Gifts.Get(id)
 	if err != nil {
 		switch {
@@ -85,6 +85,7 @@ func (app *application) showGiftHandler(w http.ResponseWriter, r *http.Request) 
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
 func (app *application) updateGiftHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract the gift ID from the URL.
 	id, err := app.readIDParam(r)
@@ -218,10 +219,9 @@ func (app *application) listGiftsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Call the GetAll() method to retrieve the movies, passing in the various filter
-	// parameters.
 	gifts, metadata, err := app.models.Gifts.GetAll(input.Title, input.Filters)
 	if err != nil {
+		app.logError(r, err) // Log the error with detailed information.
 		app.serverErrorResponse(w, r, err)
 		return
 	}
