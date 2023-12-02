@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 	"personalized_gifts.sanzhar.net/internal/validator"
 	"time"
 )
@@ -170,19 +170,18 @@ func (m GiftModel) Delete(id int64) error {
 	return nil
 }
 
-func (m GiftModel) GetAll(title string, status []string, filters Filters) ([]*Gift, Metadata, error) {
+func (m GiftModel) GetAll(title string, filters Filters) ([]*Gift, Metadata, error) {
 	query := fmt.Sprintf(`
 	SELECT count(*) OVER(), id, created_at, title, description, superiority, status, category, version
 	FROM gifts
 	WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
-    AND (status = $2 OR $2 = '{}')
     ORDER BY %s %s, id ASC
-    LIMIT $3 OFFSET $4`, filters.sortColumn(), filters.sortDirection())
+    LIMIT $2 OFFSET $3`, filters.sortColumn(), filters.sortDirection())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	args := []interface{}{title, pq.Array(status), filters.limit(), filters.offset()}
+	args := []interface{}{title, filters.limit(), filters.offset()}
 
 	rows, err := m.DB.QueryContext(ctx, query, args...)
 	if err != nil {

@@ -44,6 +44,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
+	// Insert the user data into the database.
 	err = app.models.Users.Insert(user)
 	if err != nil {
 		switch {

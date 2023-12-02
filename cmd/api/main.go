@@ -15,6 +15,7 @@ import (
 
 const version = "1.0.0"
 
+// Update the config struct to hold the SMTP server settings.
 type config struct {
 	port int
 	env  string
@@ -38,7 +39,9 @@ type config struct {
 	}
 }
 
-// Update the application struct to hold a new Mailer instance.
+// Include a sync.WaitGroup in the application struct. The zero-value for a
+// sync.WaitGroup type is a valid, useable, sync.WaitGroup with a 'counter' value of 0,
+// so we don't need to do anything else to initialize it before we can use it.
 type application struct {
 	config config
 	logger *jsonlog.Logger
@@ -63,24 +66,17 @@ func main() {
 	// make sure to replace the default values for smtp-username and smtp-password
 	// with your own Mailtrap credentials.
 	flag.StringVar(&cfg.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP host")
-	flag.IntVar(&cfg.smtp.port, "smtp-port", 2525, "SMTP port")
-	flag.StringVar(&cfg.smtp.username, "smtp-username", "e6efe645ab1726", "SMTP username")
-	flag.StringVar(&cfg.smtp.password, "smtp-password", "0fe876c10db399", "SMTP password")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 25, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", "bf67555f4d3789", "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "ab15f7ed0e215a", "SMTP password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "PersonalizedGifts <no-reply@personalizedgifts.sanzhar.net>", "SMTP sender")
 	flag.Parse()
-
-	// Initialize a new jsonlog.Logger which writes any messages *at or above* the INFO
-	// severity level to the standard out stream.
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 	db, err := openDB(cfg)
 	if err != nil {
-		// Use the PrintFatal() method to write a log entry containing the error at the
-		// FATAL level and exit. We have no additional properties to include in the log
-		// entry, so we pass nil as the second parameter.
 		logger.PrintFatal(err, nil)
 	}
 	defer db.Close()
-	// Likewise use the PrintInfo() method to write a message at the INFO level.
 	logger.PrintInfo("database connection pool established", nil)
 	// Initialize a new Mailer instance using the settings from the command line
 	// flags, and add it to the application struct.

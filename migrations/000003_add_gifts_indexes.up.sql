@@ -1,2 +1,1 @@
-DROP INDEX IF EXISTS movies_title_idx;
-DROP INDEX IF EXISTS movies_status_idx;
+CREATE INDEX IF NOT EXISTS gifts_title_idx ON gifts USING GIN (to_tsvector('simple', title));

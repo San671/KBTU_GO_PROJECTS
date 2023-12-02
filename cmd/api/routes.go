@@ -8,23 +8,17 @@ import (
 // Update the routes() method to return a http.Handler instead of a *httprouter.Router.
 func (app *application) routes() http.Handler {
 	router := httprouter.New()
-
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
-
 	router.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/gifts", app.listGiftsHandler)
-	router.HandlerFunc(http.MethodPost, "/v1/gifts", app.createGiftHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/gifts/:id", app.showGiftHandler)
-	router.HandlerFunc(http.MethodPatch, "/v1/gifts/:id", app.updateGiftHandler)
-	router.HandlerFunc(http.MethodDelete, "/v1/gifts/:id", app.deleteGiftHandler)
-	// Add the route for the POST /v1/users endpoint.
+	// Use the requireActivatedUser() middleware on our five /v1/movies** endpoints.
+	router.HandlerFunc(http.MethodGet, "/v1/gifts", app.requireActivatedUser(app.listGiftsHandler))
+	router.HandlerFunc(http.MethodPost, "/v1/gifts", app.requireActivatedUser(app.createGiftHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/gifts/:id", app.requireActivatedUser(app.showGiftHandler))
+	router.HandlerFunc(http.MethodPatch, "/v1/gifts/:id", app.requireActivatedUser(app.updateGiftHandler))
+	router.HandlerFunc(http.MethodDelete, "/v1/gifts/:id", app.requireActivatedUser(app.deleteGiftHandler))
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
-	// Add the route for the PUT /v1/users/activated endpoint.
 	router.HandlerFunc(http.MethodPut, "/v1/users/activated", app.activateUserHandler)
-	// Add the route for the POST /v1/tokens/authentication endpoint.
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", app.createAuthenticationTokenHandler)
-
-	// Use the authenticate() middleware on all requests.
 	return app.recoverPanic(app.rateLimit(app.authenticate(router)))
 }

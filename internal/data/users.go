@@ -69,6 +69,7 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 	}
 	return true, nil
 }
+
 func ValidateEmail(v *validator.Validator, email string) {
 	v.Check(email != "", "email", "must be provided")
 	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
@@ -136,9 +137,9 @@ RETURNING id, created_at, version`
 // return one record (or none at all, in which case we return a ErrRecordNotFound error).
 func (m UserModel) GetByEmail(email string) (*User, error) {
 	query := `
-       SELECT id, created_at, name, email, password_hash, activated, version
-       FROM users
-       WHERE email = $1`
+SELECT id, created_at, name, email, password_hash, activated, version
+FROM users
+WHERE email = $1`
 	var user User
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -169,10 +170,10 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 // record originally.
 func (m UserModel) Update(user *User) error {
 	query := `
-        UPDATE users
-        SET name = $1, email = $2, password_hash = $3, activated = $4, version = version + 1
-        WHERE id = $5 AND version = $6
-        RETURNING version`
+UPDATE users
+SET name = $1, email = $2, password_hash = $3, activated = $4, version = version + 1
+WHERE id = $5 AND version = $6
+RETURNING version`
 	args := []interface{}{
 		user.Name,
 		user.Email,
@@ -188,7 +189,7 @@ func (m UserModel) Update(user *User) error {
 		switch {
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
 			return ErrDuplicateEmail
-			return ErrDuplicateEmail
+
 		case errors.Is(err, sql.ErrNoRows):
 			return ErrEditConflict
 		default:
@@ -203,13 +204,13 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
 	// Set up the SQL query.
 	query := `
-        SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
-        FROM users
-        INNER JOIN tokens
-        ON users.id = tokens.user_id
-        WHERE tokens.hash = $1
-        AND tokens.scope = $2
-        AND tokens.expiry > $3`
+SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
+FROM users
+INNER JOIN tokens
+ON users.id = tokens.user_id
+WHERE tokens.hash = $1
+AND tokens.scope = $2
+AND tokens.expiry > $3`
 	// Create a slice containing the query arguments. Notice how we use the [:] operator
 	// to get a slice containing the token hash, rather than passing in the array (which
 	// is not supported by the pq driver), and that we pass the current time as the
